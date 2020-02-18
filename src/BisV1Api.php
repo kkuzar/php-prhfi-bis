@@ -87,13 +87,13 @@ class BisV1Api
         }
     }
 
-    public function queryCompanyDetailWithBusinessId($inputId)
+    public function queryCompanyDetailWithBusinessId($inputId, $inputUrl = false)
     {
         if (empty($inputId)) return [];
         if (!is_string($inputId)) return [];
 
         try {
-            $url = $this->getBusIdUrl($inputId);
+            $url = (!$inputUrl)? $this->getBusIdUrl($inputId): $inputUrl;
             $jsonStr = file_get_contents($url);
 
             if (!$jsonStr) {
@@ -112,32 +112,38 @@ class BisV1Api
         $jsonObj = $this->queryCompanyDetailWithParam($inputObj);
         $resStruct = self::getStructedReturnTemplate();
 
-        
+        if (isset($jsonObj["results"])) {
+            // if there any results? this will have three case
+            // Which is 0 1 and greater that 1, 1+
 
+            $size = count($jsonObj["results"]);
+
+            var_dump($size);
+            if ($size === 0) return [];
+
+            if ($size === 1) {
+                if (isset($jsonObj["results"][0])) return $this->processResultsArray($jsonObj["results"][0]);
+            }
+
+            if ($size > 1) {
+                $response = [];
+                $rs = $jsonObj["results"];
+                foreach ($rs as $results){
+                    $busId = $this->getBusinessIdFromUrl($results["detailsUri"]);
+                    $response[] = $this->getCompanyStructedDataWithBusinessId($busId);
+                }
+
+                return $response;
+            }
+        }
+
+        return [];
     }
 
     public function getCompanyStructedDataWithBusinessId($inputId)
     {
         $jsonObj = $this->queryCompanyDetailWithBusinessId($inputId);
-        $resStruct = self::getStructedReturnTemplate();
-
-        if (isset($jsonObj["results"][0])) {
-            $detail = $jsonObj["results"][0];
-            $resStruct["name"] = $detail["name"];
-            $resStruct["businessId"] = $detail["businessId"];
-            $resStruct["companyForm"] = $detail["companyForm"];
-
-            $resStruct["website"]              = $this->fetchLatestValueFromArrayWithKey("value", "registrationDate",$detail["contactDetails"]);
-            $resStruct["latestAddr"]           = $this->fetchLatestValueFromArrayWithKey("street", "registrationDate",$detail["addresses"]);
-            $resStruct["latestPost"]           = $this->fetchLatestValueFromArrayWithKey("postCode", "registrationDate",$detail["addresses"]);
-            $resStruct["latestCity"]           = $this->fetchLatestValueFromArrayWithKey("city", "registrationDate",$detail["addresses"]);
-            $resStruct["latestBusinessCode"]   = $this->fetchLatestValueFromArrayWithKey("code", "registrationDate",$detail["businessLines"]);
-            $resStruct["latestBusinessLine"]   = $this->fetchLatestValueFromArrayWithKey("name", "registrationDate",$detail["businessLines"]);
-            $resStruct["latestAuxiliaryNames"] = $this->fetchLatestValueFromArrayWithKey("name", "registrationDate",$detail["auxiliaryNames"]);
-
-            return $resStruct;
-        }
-
+        if (isset($jsonObj["results"][0])) return $this->processResultsArray($jsonObj["results"][0]);
         return [];
     }
 
@@ -150,7 +156,35 @@ class BisV1Api
         // var_dump($e);
     }
 
-    public function fetchLatestValueFromArrayWithKey ($tagetKey, $sortKey, Array $arr, $sortType = SORT_DESC)
+    protected function getBusinessIdFromUrl($url)
+    {
+        $arr = explode("/", $url);
+        $size = count($arr);
+        return $arr[$size - 1];
+    }
+
+    protected function processResultsArray($results)
+    {
+        $resStruct = self::getStructedReturnTemplate();
+        if (isset($results)) {
+            $detail = $results;
+            $resStruct["name"] = $detail["name"];
+            $resStruct["businessId"] = $detail["businessId"];
+            $resStruct["companyForm"] = $detail["companyForm"];
+
+            $resStruct["website"]              = $this->fetchLatestValueFromArrayWithKey("value", "registrationDate",$detail["contactDetails"]);
+            $resStruct["latestAddr"]           = $this->fetchLatestValueFromArrayWithKey("street", "registrationDate",$detail["addresses"]);
+            $resStruct["latestPost"]           = $this->fetchLatestValueFromArrayWithKey("postCode", "registrationDate",$detail["addresses"]);
+            $resStruct["latestCity"]           = $this->fetchLatestValueFromArrayWithKey("city", "registrationDate",$detail["addresses"]);
+            $resStruct["latestBusinessCode"]   = $this->fetchLatestValueFromArrayWithKey("code", "registrationDate",$detail["businessLines"]);
+            $resStruct["latestBusinessLine"]   = $this->fetchLatestValueFromArrayWithKey("name", "registrationDate",$detail["businessLines"]);
+            $resStruct["latestAuxiliaryNames"] = $this->fetchLatestValueFromArrayWithKey("name", "registrationDate",$detail["auxiliaryNames"]);
+            return $resStruct;
+        }
+        return [];
+    }
+
+    protected function fetchLatestValueFromArrayWithKey ($tagetKey, $sortKey, Array $arr, $sortType = SORT_DESC)
     {
         $tempArr = array_column($arr, $sortKey);
         array_multisort($tempArr, $sortType, $arr);
