@@ -1,0 +1,18 @@
+{
+    "name": "kkuzar/prhfibis",
+    "description": "A wrapper component for Prh.fi BIS v1 api",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "kuzar kyzyrbek",
+            "email": "kuzar.k@protonmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "kuzar\\" : "src/"
+        }
+    },
+    "require": {}
+}
