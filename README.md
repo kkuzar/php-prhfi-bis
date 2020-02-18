@@ -134,7 +134,7 @@ e.g.
 ```php
 
 $bis = new kuzar\BisV1Api();
-$bis->queryCompanyDetailWithBusinessId("2299022-8");
+$bis->getCompanyStructedDataWithBusinessId("2299022-8");
 ```
 
 #### fetch Company Brief Structed Information with Params `getCompanyStructedDataWithParam(inputObj: object)`
